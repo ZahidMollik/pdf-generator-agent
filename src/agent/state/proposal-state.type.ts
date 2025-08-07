@@ -10,7 +10,7 @@ export const StateAnnotation = Annotation.Root({
     reducer: (x, y) => y ?? x,
     default: () => '',
   }),
-  pdfReady: Annotation<boolean>({
+  docReady: Annotation<boolean>({
     reducer: (x, y) => y ?? x,
     default: () => false,
   }),
@@ -18,11 +18,15 @@ export const StateAnnotation = Annotation.Root({
     reducer: (x, y) => y ?? x,
     default: () => '',
   }),
-  pdfBuffer: Annotation<any>({
+  docBuffer: Annotation<any>({
     reducer: (x, y) => y ?? x,
     default: () => null,
   }),
   title: Annotation<string>({
+    reducer: (x, y) => y ?? x,
+    default: () => '',
+  }),
+  projectName: Annotation<string>({
     reducer: (x, y) => y ?? x,
     default: () => '',
   }),

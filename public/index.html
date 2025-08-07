@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AI Proposal Generator Agent</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .chat-container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        width: 90%;
+        max-width: 800px;
+        height: 80vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .chat-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        text-align: center;
+        border-radius: 20px 20px 0 0;
+      }
+
+      .chat-header h1 {
+        font-size: 1.5em;
+        font-weight: 600;
+      }
+
+      .messages-container {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #f8f9fa;
+      }
+
+      .message {
+        margin-bottom: 15px;
+        display: flex;
+        align-items: flex-start;
+        animation: fadeIn 0.3s ease-in;
+      }
+
+      .message.user {
+        justify-content: flex-end;
+      }
+
+      .message-content {
+        max-width: 70%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        font-size: 0.95em;
+        line-height: 1.4;
+      }
+
+      .message.user .message-content {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-bottom-right-radius: 4px;
+      }
+
+      .message.bot .message-content {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+
+      .input-container {
+        padding: 20px;
+        border-top: 1px solid #e9ecef;
+        background: white;
+        border-radius: 0 0 20px 20px;
+      }
+
+      .input-group {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      #userInput {
+        flex: 1;
+        padding: 12px 16px;
+        border: 2px solid #e9ecef;
+        border-radius: 25px;
+        font-size: 1em;
+        outline: none;
+      }
+
+      #userInput:focus {
+        border-color: #667eea;
+      }
+
+      .btn {
+        padding: 12px 16px;
+        border-radius: 25px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: transform 0.2s ease;
+      }
+
+      .send-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .reset-btn {
+        background: #dc3545;
+        color: white;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+      }
+      .btn:active {
+        transform: translateY(0);
+      }
+
+      .project-form {
+        padding: 30px;
+        background: white;
+        flex: 1;
+        overflow-y: auto;
+      }
+
+      .form-section {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .form-section h3 {
+        color: #333;
+        margin-bottom: 25px;
+        font-size: 1.4em;
+        font-weight: 600;
+        text-align: center;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+        font-size: 0.95em;
+      }
+
+      .form-group input,
+      .form-group textarea,
+      .form-group select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        font-size: 1em;
+        outline: none;
+        transition: border-color 0.3s ease;
+        background: white;
+      }
+
+      .form-group input:focus,
+      .form-group textarea:focus,
+      .form-group select:focus {
+        border-color: #667eea;
+      }
+
+      .form-group select {
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23666' d='M2 0L0 2h4zm0 5L0 3h4z'/></svg>");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 12px;
+      }
+
+      .form-group textarea {
+        resize: vertical;
+        min-height: 100px;
+        font-family: inherit;
+      }
+
+      .generate-btn {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        width: 100%;
+        padding: 15px;
+        font-size: 1.1em;
+        margin-top: 10px;
+      }
+
+      .doc-btn {
+        background: linear-gradient(135deg, #fd7e14 0%, #e83e8c 100%);
+        color: white;
+      }
+
+      .doc-notification {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+        padding: 10px 16px;
+        border-radius: 12px;
+        margin-top: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .download-button {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 0.85em;
+      }
+
+      .proposal-preview {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 12px;
+        padding: 20px;
+        margin: 20px 0;
+        white-space: pre-wrap;
+        font-family: 'Georgia', serif;
+        line-height: 1.6;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="chat-header">
+        <h1>📄 AI Proposal Generator</h1>
+        <p>Let's generate a web proposal tailored to your needs!</p>
+      </div>
+
+      <!-- Project Details Form -->
+      <div class="project-form" id="projectForm">
+        <div class="form-section">
+          <h3>📋 Project Details</h3>
+
+          <div class="form-group">
+            <label for="projectName">Project Name *</label>
+            <input
+              type="text"
+              id="projectName"
+              placeholder="e.g., E-MART"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="projectType">Project Type *</label>
+            <select id="projectType" required>
+              <option value="">Select Project Type</option>
+              <option value="ecommerce">E-commerce Website</option>
+              <option value="business">Business Website</option>
+              <option value="portfolio">Portfolio Website</option>
+              <option value="blog">Blog/Content Website</option>
+              <option value="webapp">Web Application</option>
+              <option value="mobile">Mobile App</option>
+              <option value="api">API Development</option>
+              <option value="cms">Content Management System</option>
+              <option value="crm">CRM System</option>
+              <option value="erp">ERP System</option>
+              <option value="landing">Landing Page</option>
+              <option value="redesign">Website Redesign</option>
+              <option value="maintenance">Website Maintenance</option>
+              <option value="custom">Custom Solution</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="budget">Budget *</label>
+            <input
+              type="text"
+              id="budget"
+              placeholder="e.g., $5,000 - $10,000"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="timeline">Timeline *</label>
+            <input
+              type="text"
+              id="timeline"
+              placeholder="e.g., 6-8 weeks"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="requirements">Specific Requirements (Optional)</label>
+            <textarea
+              id="requirements"
+              placeholder="e.g., User authentication, Payment gateway, Mobile responsive, SEO optimization..."
+              rows="4"
+            ></textarea>
+          </div>
+
+          <button class="btn generate-btn" onclick="generateProposal()">
+            🚀 Generate Proposal
+          </button>
+        </div>
+      </div>
+
+      <div class="messages-container" id="messages" style="display: none"></div>
+
+      <div class="input-container" id="chatInput" style="display: none">
+        <div class="input-group">
+          <input
+            type="text"
+            id="userInput"
+            placeholder="Ask for changes or type 'make doc' to generate DOC..."
+            onkeypress="handleKeyPress(event)"
+          />
+          <button class="btn send-btn" onclick="sendMessage()">Send</button>
+          <button class="btn doc-btn" onclick="generateDOC()">
+            📄 Make DOC
+          </button>
+          <button class="btn reset-btn" onclick="resetChat()">
+            🔄 New Project
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const messagesDiv = document.getElementById('messages');
+      const userInput = document.getElementById('userInput');
+      const projectForm = document.getElementById('projectForm');
+      const chatInput = document.getElementById('chatInput');
+      let isProposalGenerated = false;
+
+      function handleKeyPress(e) {
+        if (e.key === 'Enter') sendMessage();
+      }
+
+      function addMessage(text, sender) {
+        const message = document.createElement('div');
+        message.classList.add('message', sender);
+
+        // If it's a bot message and contains the proposal, format it nicely
+        if (sender === 'bot' && text.length > 500) {
+          message.innerHTML = `
+          <div class="message-content">
+            <div class="proposal-preview">${text}</div>
+          </div>
+        `;
+        } else {
+          message.innerHTML = `
+          <div class="message-content">${text}</div>
+        `;
+        }
+
+        messagesDiv.appendChild(message);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+
+      async function generateProposal() {
+        const projectName = document.getElementById('projectName').value.trim();
+        const projectType = document.getElementById('projectType').value;
+        const budget = document.getElementById('budget').value.trim();
+        const timeline = document.getElementById('timeline').value.trim();
+        const requirements = document
+          .getElementById('requirements')
+          .value.trim();
+
+        if (!projectName || !projectType || !budget || !timeline) {
+          alert(
+            'Please fill in all required fields (Project Name, Project Type, Budget, Timeline)',
+          );
+          return;
+        }
+
+        // Hide form and show chat
+        projectForm.style.display = 'none';
+        messagesDiv.style.display = 'block';
+        chatInput.style.display = 'block';
+
+        // Get project type display name
+        const projectTypeSelect = document.getElementById('projectType');
+        const projectTypeText =
+          projectTypeSelect.options[projectTypeSelect.selectedIndex].text;
+
+        // Construct the structured message
+        const structuredMessage = `Generate a web development proposal with the following details:
+Project Name: ${projectName}
+Project Type: ${projectTypeText}
+Budget: ${budget}
+Timeline: ${timeline}
+${requirements ? `Specific Requirements: ${requirements}` : ''}
+
+Please create a comprehensive ${projectTypeText.toLowerCase()} proposal based on these specifications.`;
+
+        addMessage(
+          `📋 Generating ${projectTypeText.toLowerCase()} proposal for "${projectName}"...`,
+          'user',
+        );
+
+        try {
+          const res = await fetch('http://localhost:3000/chat-proposal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: structuredMessage }),
+          });
+
+          const data = await res.json();
+          addMessage(data.reply, 'bot');
+          isProposalGenerated = true;
+
+          // Add instruction message
+          addMessage(
+            "✨ Your proposal is ready! You can now ask for changes or click 'Make DOC' to download it.",
+            'bot',
+          );
+        } catch (error) {
+          console.error('Error generating proposal:', error);
+          addMessage(
+            '❌ Sorry, there was an error generating your proposal. Please try again.',
+            'bot',
+          );
+        }
+      }
+
+      async function sendMessage() {
+        const input = userInput.value.trim();
+        if (!input) return;
+
+        addMessage(input, 'user');
+        userInput.value = '';
+
+        try {
+          const res = await fetch('http://localhost:3000/chat-proposal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: input }),
+          });
+
+          if (
+            res.headers
+              .get('Content-Type')
+              ?.includes(
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              )
+          ) {
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'proposal.docx';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            showDOCNotification();
+            addMessage('📄 Your proposal DOC has been downloaded!', 'bot');
+          } else {
+            const data = await res.json();
+            addMessage(data.reply, 'bot');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          addMessage(
+            '❌ Sorry, there was an error processing your request.',
+            'bot',
+          );
+        }
+      }
+
+      async function generateDOC() {
+        if (!isProposalGenerated) {
+          addMessage(
+            '⚠️ Please generate a proposal first before creating a DOC.',
+            'bot',
+          );
+          return;
+        }
+
+        addMessage('📄 Generating DOC...', 'user');
+
+        try {
+          const res = await fetch('http://localhost:3000/chat-proposal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: 'make doc' }),
+          });
+
+          if (
+            res.headers
+              .get('Content-Type')
+              ?.includes(
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              )
+          ) {
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'proposal.docx';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            showDOCNotification();
+            addMessage('📄 Your proposal DOC has been downloaded!', 'bot');
+          } else {
+            const data = await res.json();
+            addMessage(data.reply, 'bot');
+          }
+        } catch (error) {
+          console.error('Error generating DOC:', error);
+          addMessage('❌ Sorry, there was an error generating the DOC.', 'bot');
+        }
+      }
+
+      async function resetChat() {
+        try {
+          await fetch('http://localhost:3000/chat-proposal/reset', {
+            method: 'POST',
+          });
+
+          // Reset UI
+          messagesDiv.innerHTML = '';
+          userInput.value = '';
+          document.getElementById('projectName').value = '';
+          document.getElementById('projectType').value = '';
+          document.getElementById('budget').value = '';
+          document.getElementById('timeline').value = '';
+          document.getElementById('requirements').value = '';
+
+          // Show form again
+          projectForm.style.display = 'block';
+          messagesDiv.style.display = 'none';
+          chatInput.style.display = 'none';
+          isProposalGenerated = false;
+        } catch (error) {
+          console.error('Error resetting chat:', error);
+        }
+      }
+
+      function showDOCNotification() {
+        const notification = document.createElement('div');
+        notification.className = 'doc-notification';
+        notification.innerHTML = `
+        <span>📄 Proposal DOC ready and downloaded!</span>
+      `;
+        messagesDiv.appendChild(notification);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+    </script>
+  </body>
+</html>

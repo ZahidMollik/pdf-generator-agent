@@ -19,43 +19,40 @@ const llm = new ChatGroq({
 
 export const buildProposalGraph = () => {
   const builder = new StateGraph(StateAnnotation)
-    .addNode('generatePdfTool', new ToolNode([generateProposalTool]))
+    .addNode('generateDocTool', new ToolNode([generateProposalTool]))
     .addNode('processRequest', async (state: typeof StateAnnotation.State) => {
       const lower = state.userInput.toLowerCase();
-      const wantsPdf =
-        lower.includes('make pdf') || lower.includes('generate pdf');
+      const wantsDoc =
+        lower.includes('make doc') ||
+        lower.includes('generate doc')
 
-      if (wantsPdf) {
+      if (wantsDoc) {
         const draftContent = state.draft || '';
         const title = state.title;
-
-        console.log('📄 PDF Generation - Title:', title);
-        console.log('📄 PDF Generation - Content length:', draftContent.length);
 
         if (!draftContent.trim()) {
           return {
             ...state,
             message:
-              'No proposal content available. Please chat about your project first before generating a PDF.',
-            pdfReady: false,
+              'No proposal content available. Please generate a proposal first.',
+            docReady: false,
           };
         }
 
         return {
           ...state,
-          message: '🛠 Generating your proposal PDF...',
+          message: 'Generating your proposal DOC...',
           messages: [
             new AIMessage({
               content: '',
               tool_calls: [
                 {
-                  name: 'generate_proposal_pdf',
+                  name: 'generate_proposal_doc',
                   args: {
                     content: draftContent,
-                    title: title,
-                    date: new Date().toLocaleDateString(),
+                    title: title
                   },
-                  id: 'pdf_generation_call',
+                  id: 'doc_generation_call',
                 },
               ],
             }),
@@ -63,46 +60,35 @@ export const buildProposalGraph = () => {
         };
       } else {
         const extractedInfo = extractUserPreferences(state.userInput);
-        console.log('Extracted info:', extractedInfo);
 
         const timelineContext =
           state.userTimeline || extractedInfo.timeline
-            ? `Timeline requirement: ${state.userTimeline || extractedInfo.timeline}`
+            ? `Timeline: ${state.userTimeline || extractedInfo.timeline}`
             : '';
 
         const budgetContext =
           state.userBudget || extractedInfo.budget
-            ? `Budget constraint: ${state.userBudget || extractedInfo.budget}`
+            ? `Budget: ${state.userBudget || extractedInfo.budget}`
             : '';
 
         const requirementsContext =
           [...(state.userRequirements || []), ...extractedInfo.requirements]
             .length > 0
-            ? `Specific requirements: ${[...(state.userRequirements || []), ...extractedInfo.requirements].join(', ')}`
+            ? `Requirements: ${[...(state.userRequirements || []), ...extractedInfo.requirements].join(', ')}`
             : '';
 
-        // Determine the best title to use
+        // Determine title
         let titleContext = '';
+        let projectNameContext = '';
+
         if (extractedInfo.title) {
-          // New title extracted from current input
+          projectNameContext = extractedInfo.title;
           titleContext = `${extractedInfo.title} - Development Proposal`;
-          console.log('✅ Using newly extracted title:', titleContext);
-        } else if (state.title && state.title !== 'Web Development Proposal') {
-          // Use existing title from state if it's not the default
-          titleContext = state.title;
-          console.log('✅ Using existing title from state:', titleContext);
+        } else if (state.projectName) {
+          projectNameContext = state.projectName;
+          titleContext = `${state.projectName} - Development Proposal`;
         } else {
-          // Try to infer from user input if no explicit title
-          const inferredTitle = state.userInput.match(
-            /\b([A-Z][a-zA-Z0-9\s]+)\b/,
-          )?.[1];
-          if (inferredTitle && inferredTitle.length > 3) {
-            titleContext = `${inferredTitle} - Development Proposal`;
-            console.log('✅ Using inferred title:', titleContext);
-          } else {
-            titleContext = 'Web Development Proposal';
-            console.log('⚠️  Using default title:', titleContext);
-          }
+          titleContext = state.title || 'Web Development Proposal';
         }
 
         const chatHistory = state.history ?? [];
@@ -113,13 +99,11 @@ export const buildProposalGraph = () => {
             userInput: state.userInput || '',
             draft: state.draft || 'Starting new proposal...',
             timelineNote: timelineContext
-              ? ` (IMPORTANT: Use this timeline: ${timelineContext})`
-              : ' (use realistic estimates)',
-            budgetNote: budgetContext
-              ? ` (IMPORTANT: Structure pricing around this budget: ${budgetContext})`
-              : ' (use placeholder values like $X, $Y)',
+              ? ` (Timeline: ${timelineContext})`
+              : '',
+            budgetNote: budgetContext ? ` (Budget: ${budgetContext})` : '',
             requirementsNote: requirementsContext
-              ? `IMPORTANT: Incorporate these specific requirements into the proposal: ${requirementsContext}`
+              ? `Requirements: ${requirementsContext}`
               : '',
           };
 
@@ -134,10 +118,11 @@ export const buildProposalGraph = () => {
           return {
             ...state,
             title: titleContext,
+            projectName: projectNameContext,
             draft: responseContent,
             history: [...chatHistory, userMessage, responseContent],
             message: responseContent,
-            pdfReady: false,
+            docReady: false,
             userTimeline: state.userTimeline || extractedInfo.timeline,
             userBudget: state.userBudget || extractedInfo.budget,
             userRequirements: [
@@ -146,74 +131,50 @@ export const buildProposalGraph = () => {
             ],
           };
         } catch (error) {
-          console.error('LLM Error:', error);
           return {
             ...state,
-            message:
-              'Error generating response. Please check your API key and try again.',
+            message: 'Error generating response. Please try again.',
           };
         }
       }
     })
-    .addNode('handlePdfResult', async (state: typeof StateAnnotation.State) => {
+    .addNode('handleDocResult', async (state: typeof StateAnnotation.State) => {
       const toolMessage = state.messages
         .slice()
         .reverse()
         .find((msg) => msg instanceof ToolMessage) as ToolMessage;
 
-      if (!toolMessage || !toolMessage.content) {
+      if (!toolMessage?.content) {
         return {
           ...state,
-          message: 'Failed to generate PDF. No result returned.',
-          pdfReady: false,
+          message: 'Failed to generate DOC.',
+          docReady: false,
         };
       }
 
-      let pdfBuffer: any = toolMessage.content;
+      let docBuffer: any = toolMessage.content;
 
-      // Handle different Buffer serialization formats
-      if (typeof pdfBuffer === 'string') {
+      if (typeof docBuffer === 'string') {
         try {
-          const parsed = JSON.parse(pdfBuffer);
+          const parsed = JSON.parse(docBuffer);
           if (parsed.type === 'Buffer' && Array.isArray(parsed.data)) {
-            pdfBuffer = Buffer.from(parsed.data);
-          } else {
-            console.error('Unexpected JSON structure:', parsed);
+            docBuffer = Buffer.from(parsed.data);
           }
         } catch (e) {
-          console.error('Failed to parse PDF buffer JSON:', e);
+          // Handle error silently
         }
       } else if (
-        typeof pdfBuffer === 'object' &&
-        pdfBuffer &&
-        'type' in pdfBuffer &&
-        pdfBuffer.type === 'Buffer' &&
-        'data' in pdfBuffer &&
-        Array.isArray(pdfBuffer.data)
+        docBuffer?.type === 'Buffer' &&
+        Array.isArray(docBuffer.data)
       ) {
-        pdfBuffer = Buffer.from(pdfBuffer.data);
-      } else if (Buffer.isBuffer(pdfBuffer)) {
-        console.log('PDF buffer is already a Buffer object');
-      } else {
-        console.error(
-          'Unexpected PDF buffer type:',
-          typeof pdfBuffer,
-          pdfBuffer,
-        );
+        docBuffer = Buffer.from(docBuffer.data);
       }
-
-      console.log(
-        'Final PDF buffer type:',
-        typeof pdfBuffer,
-        'isBuffer:',
-        Buffer.isBuffer(pdfBuffer),
-      );
 
       return {
         ...state,
-        pdfBuffer: pdfBuffer,
-        message: 'Proposal PDF generated successfully!',
-        pdfReady: true,
+        docBuffer: docBuffer,
+        message: 'Proposal DOC generated successfully!',
+        docReady: true,
       };
     })
     .addEdge(START, 'processRequest')
@@ -223,11 +184,11 @@ export const buildProposalGraph = () => {
         'tool_calls' in lastMessage &&
         Array.isArray(lastMessage.tool_calls) &&
         lastMessage.tool_calls.length > 0
-        ? 'generatePdfTool'
+        ? 'generateDocTool'
         : END;
     })
-    .addEdge('generatePdfTool', 'handlePdfResult')
-    .addEdge('handlePdfResult', END);
+    .addEdge('generateDocTool', 'handleDocResult')
+    .addEdge('handleDocResult', END);
 
   return builder.compile();
 };

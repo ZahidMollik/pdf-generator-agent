@@ -1,42 +1,23 @@
 import { z } from 'zod';
 import { tool } from '@langchain/core/tools';
-import {
-  generateProposalPDF,
-  cleanContentForPDF,
-} from '../utils/pdf-generator';
+import { generateDoc } from '../utils/doc-generator';
 
 export const generateProposalTool = tool(
-  async ({ title, content, date }) => {
-    console.log('Generating PDF with:', {
-      title: title?.substring(0, 50),
-      contentLength: content?.length,
-    });
-
-    const cleaned = cleanContentForPDF(content);
-    const buffer = generateProposalPDF({
-      title,
-      content: cleaned,
-      date,
-    });
-
-    console.log(
-      'Generated PDF buffer:',
-      typeof buffer,
-      'isBuffer:',
-      Buffer.isBuffer(buffer),
-      'size:',
-      buffer?.length,
-    );
-
-    return buffer;
+  async ({ title, content }) => {
+    try {
+      const buffer = await generateDoc(title, content);
+      return buffer;
+    } catch (error) {
+      console.error('Error generating document:', error);
+      throw new Error(`Failed to generate document: ${error.message}`);
+    }
   },
   {
-    name: 'generate_proposal_pdf',
-    description: 'Generates a PDF for the web development proposal.',
+    name: 'generate_proposal_doc',
+    description: 'Generates a DOC file for the web development proposal.',
     schema: z.object({
       content: z.string().describe('The proposal content'),
       title: z.string().describe('Title of the proposal'),
-      date: z.string().describe('Proposal date (e.g., 08/03/2025)'),
     }),
   },
 );

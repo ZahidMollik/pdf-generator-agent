@@ -11,14 +11,17 @@ export class ProposalController {
     try {
       const result = await this.proposalService.interact(message);
 
-      if (result.pdfBuffer) {
-        res.setHeader('Content-Type', 'application/pdf');
+      if (result.docBuffer) {
+        res.setHeader(
+          'Content-Type',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        );
         res.setHeader(
           'Content-Disposition',
-          'attachment; filename=web-development-proposal.pdf',
+          'attachment; filename=web-development-proposal.docx',
         );
-        res.setHeader('Content-Length', result.pdfBuffer.length);
-        res.send(result.pdfBuffer);
+        res.setHeader('Content-Length', result.docBuffer.length);
+        res.send(result.docBuffer);
       } else {
         res.json({ reply: result.reply });
       }
@@ -35,13 +38,5 @@ export class ProposalController {
   reset() {
     this.proposalService.reset();
     return { message: 'Session reset successfully' };
-  }
-
-  @Get('draft')
-  getCurrentDraft() {
-    return {
-      draft: this.proposalService.getCurrentDraft(),
-      history: this.proposalService.getHistory(),
-    };
   }
 }

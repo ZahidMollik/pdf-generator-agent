@@ -7,18 +7,20 @@ export class ProposalService {
   private history: string[] = [];
   private fullDraft = '';
   private title = '';
+  private projectName = '';
   private userTimeline = '';
   private userBudget = '';
   private userRequirements: string[] = [];
 
   async interact(
     userInput: string,
-  ): Promise<{ reply: string; pdfBuffer?: Buffer }> {
+  ): Promise<{ reply: string; docBuffer?: Buffer }> {
     const result = await this.graph.invoke({
       userInput,
       history: this.history,
       draft: this.fullDraft,
       title: this.title,
+      projectName: this.projectName,
       userTimeline: this.userTimeline,
       userBudget: this.userBudget,
       userRequirements: this.userRequirements,
@@ -27,14 +29,15 @@ export class ProposalService {
     this.history = result.history ?? this.history;
     this.fullDraft = result.draft ?? this.fullDraft;
     this.title = result.title ?? this.title;
+    this.projectName = result.projectName ?? this.projectName;
     this.userTimeline = result.userTimeline ?? this.userTimeline;
     this.userBudget = result.userBudget ?? this.userBudget;
     this.userRequirements = result.userRequirements ?? this.userRequirements;
 
-    if (result.pdfReady && result.pdfBuffer) {
+    if (result.docReady && result.docBuffer) {
       return {
         reply: result.message,
-        pdfBuffer: result.pdfBuffer,
+        docBuffer: result.docBuffer,
       };
     }
 
@@ -45,16 +48,9 @@ export class ProposalService {
     this.history = [];
     this.fullDraft = '';
     this.title = '';
+    this.projectName = '';
     this.userTimeline = '';
     this.userBudget = '';
     this.userRequirements = [];
-  }
-
-  getCurrentDraft(): string {
-    return this.fullDraft;
-  }
-
-  getHistory(): string[] {
-    return this.history;
   }
 }
